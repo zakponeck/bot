@@ -1,23 +1,29 @@
 import os
 import threading
-import gradio as gr
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 def start_bot():
-    # 1. Crea el archivo de configuración con el token para que el bot no se detenga a preguntarlo
+    # Crea el archivo de configuración con el token automáticamente
     token = os.environ.get("BOT_TOKEN", "")
     with open(".env", "w") as f:
         f.write(f"BOT_TOKEN={token}\n")
     
-    # 2. Enciende el bot de forma automática sin hacer preguntas de actualización
+    # Enciende el bot sin hacer preguntas en la consola
     os.system("python main.py --autoupdate")
 
 # Inicia el proceso del bot en segundo plano
 threading.Thread(target=start_bot, daemon=True).start()
 
-# Crea la página web para que Render detecte el puerto y el despertador funcione
-with gr.Blocks() as demo:
-    gr.Markdown("# 🚀 Servidor TKA Activo")
-    gr.Markdown("El bot de Whiteout Survival se está ejecutando en segundo plano.")
+# Crea una mini página web de fábrica (ultra ligera, no requiere instalar Gradio)
+class SimpleServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html; charset=utf-8")
+        self.end_headers()
+        html = "<html><body><h1>🚀 Servidor TKA Activo</h1><p>El bot de Whiteout Survival está corriendo en segundo plano.</p></body></html>"
+        self.wfile.write(bytes(html, "utf-8"))
 
-# Conecta el puerto que Render exige
-demo.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 10000)))
+# Conecta el puerto para que Render mantenga el servicio encendido
+PORT = int(os.environ.get("PORT", 10000))
+server = HTTPServer(("0.0.0.0", PORT), SimpleServer)
+server.serve_forever()
