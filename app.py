@@ -24,13 +24,29 @@ def run_server():
 
 threading.Thread(target=run_server, daemon=True).start()
 
-# 2. Ponemos al bot en el escenario principal para ver sus errores reales
+import time
+
+# 2. Bot en bucle: si termina (por autoupdate o por error), se relanza
 os.environ["PYTHONUNBUFFERED"] = "1"
 token = os.environ.get("BOT_TOKEN", "")
 
-with open(".env", "w") as f:
-    f.write(f"BOT_TOKEN={token}\n")
+fallos_seguidos = 0
+while True:
+    # Reescribimos .env por si la actualización lo pisó
+    with open(".env", "w") as f:
+        f.write(f"BOT_TOKEN={token}\n")
 
-print("Iniciando el proceso principal del bot...")
-# Mantenemos el truco de los 'Enter' automáticos
-os.system("yes '' | python main.py --autoupdate")
+    print("Iniciando el proceso principal del bot...", flush=True)
+    inicio = time.time()
+    os.system("yes '' | python main.py --autoupdate")
+    duracion = time.time() - inicio
+
+    # Si duró menos de 30s, cuenta como fallo y esperamos más
+    if duracion < 30:
+        fallos_seguidos += 1
+    else:
+        fallos_seguidos = 0
+
+    espera = min(5 * (2 ** fallos_seguidos), 120)
+    print(f"Bot terminó tras {duracion:.0f}s. Reiniciando en {espera}s...", flush=True)
+    time.sleep(espera)
